@@ -16,7 +16,7 @@ Chrome profile migration tool. Analyzes bookmarks, history, and extensions to se
 Requires Python 3.11+ and [uv](https://github.com/astral-sh/uv).
 
 ```bash
-git clone https://github.com/yourusername/ChromeMate.git
+git clone git@github.com:LukaszSwolkien/ChromeMate.git
 cd ChromeMate
 uv sync
 ```
