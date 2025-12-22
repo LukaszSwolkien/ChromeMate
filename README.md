@@ -97,7 +97,7 @@ uv run ruff check src/
 | History | `History` (SQLite) |
 | Extensions | `Preferences` (JSON) |
 
-Close Chrome before analyzing to avoid database locks.
+History database is copied to a temp file, so Chrome can remain open during analysis.
 
 ## License
 
