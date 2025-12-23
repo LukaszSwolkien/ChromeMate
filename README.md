@@ -39,6 +39,18 @@ cd ChromeMate
 uv sync
 ```
 
+### Shell Completion
+
+```bash
+# zsh - add to ~/.zshrc
+source /path/to/completions/chromemate.zsh
+
+# bash - add to ~/.bashrc
+source /path/to/completions/chromemate.bash
+```
+
+Requires `chromemate` in PATH (e.g., `cp chromemate /usr/local/bin/`).
+
 ## Usage
 
 With binary, replace `uv run chromemate` with `./chromemate`.

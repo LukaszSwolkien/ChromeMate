@@ -1,11 +1,15 @@
 """ChromeMate CLI application."""
 
+import sys
 from pathlib import Path
 from typing import Annotated, Optional
 from urllib.parse import urlparse
 
 import typer
 from rich.console import Console
+
+# Detect if running as PyInstaller bundle
+IS_FROZEN = getattr(sys, "frozen", False)
 
 from chromemate.analyzers import BookmarksAnalyzer, ExtensionsAnalyzer, HistoryAnalyzer
 from chromemate.exporter import (
@@ -46,7 +50,7 @@ app = typer.Typer(
     name="chromemate",
     help="Smart assistant for Chrome profile migration",
     no_args_is_help=True,
-    add_completion=False,  # Disabled for PyInstaller compatibility
+    add_completion=not IS_FROZEN,  # Disabled in PyInstaller bundle
 )
 console = Console()
 
