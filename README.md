@@ -42,14 +42,20 @@ uv sync
 ### Shell Completion
 
 ```bash
-# zsh - add to ~/.zshrc
-source /path/to/completions/chromemate.zsh
+# 1. Copy binary to PATH
+sudo cp chromemate /usr/local/bin/chromemate
 
-# bash - add to ~/.bashrc
-source /path/to/completions/chromemate.bash
+# 2. Download completion script
+curl -o ~/.chromemate.zsh https://raw.githubusercontent.com/LukaszSwolkien/ChromeMate/main/completions/chromemate.zsh
+
+# 3. Add to ~/.zshrc
+echo 'source ~/.chromemate.zsh' >> ~/.zshrc
+
+# 4. Reload shell
+source ~/.zshrc
 ```
 
-Requires `chromemate` in PATH (e.g., `cp chromemate /usr/local/bin/`).
+For bash, use `chromemate.bash` instead.
 
 ## Usage
 
