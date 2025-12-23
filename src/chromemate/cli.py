@@ -46,6 +46,7 @@ app = typer.Typer(
     name="chromemate",
     help="Smart assistant for Chrome profile migration",
     no_args_is_help=True,
+    add_completion=False,  # Disabled for PyInstaller compatibility
 )
 console = Console()
 
