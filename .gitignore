@@ -60,6 +60,9 @@ Thumbs.db
 *.log
 *.tmp
 
+# PyInstaller
+*.spec
+
 # Export directories (test output)
 tmp/
 chromemate-export/

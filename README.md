@@ -13,6 +13,20 @@ Chrome profile migration tool. Analyzes bookmarks, history, and extensions to se
 
 ## Installation
 
+### Pre-built Binary (macOS ARM64)
+
+Download the latest release from [GitHub Releases](https://github.com/LukaszSwolkien/ChromeMate/releases).
+
+```bash
+# Make executable
+chmod +x chromemate
+
+# First run: Right-click → Open (or allow in System Settings → Privacy & Security)
+./chromemate --help
+```
+
+### From Source
+
 Requires Python 3.11+ and [uv](https://github.com/astral-sh/uv).
 
 ```bash
@@ -26,6 +40,8 @@ uv sync
 ```
 
 ## Usage
+
+With binary, replace `uv run chromemate` with `./chromemate`.
 
 ```bash
 # List available profiles
@@ -95,10 +111,17 @@ uv run chromemate merge-history "OldProfile" "NewProfile" -y
 ## Development
 
 ```bash
-uv sync --dev
+uv sync --extra dev
 uv run pytest
 uv run pytest --cov=chromemate
 uv run ruff check src/
+```
+
+### Building Release
+
+```bash
+uv run pyinstaller --onefile --name chromemate src/chromemate/cli.py
+# Binary output: dist/chromemate
 ```
 
 ## Data Sources

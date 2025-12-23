@@ -290,3 +290,4 @@ def test_merge_empty_source(tmp_path: Path, target_profile: Path) -> None:
     assert stats.urls_updated == 0
     assert stats.visits_added == 0
 
+
