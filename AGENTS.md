@@ -138,3 +138,46 @@ Format: `<type>: <summary>` (one-liner, max 72 chars)
 - Generic placeholder values - use self-documenting names (e.g., `OldProfile` not `Profile 1`)
 - Documentation that describes obvious code behavior
 - Examples that don't make sense in domain context (verify the example workflow is realistic)
+
+---
+
+# Releasing
+
+## GitHub Release Workflow
+
+1. **Update version** in project config (e.g., `pyproject.toml`, `package.json`, `Cargo.toml`)
+2. **Commit** version bump: `git commit -am "chore: bump version to X.Y.Z"`
+3. **Tag**: `git tag vX.Y.Z`
+4. **Push**: `git push origin main --tags`
+5. **Create release** at `https://github.com/<owner>/<repo>/releases/new`
+   - Select the tag
+   - Add release notes (see template below)
+   - Attach build artifacts
+   - Publish
+
+## Release Notes Template
+
+```markdown
+## <Project> vX.Y.Z
+
+<One-line summary of the release>
+
+### Installation
+<Platform-specific installation steps>
+
+### Changes
+- <Change 1>
+- <Change 2>
+
+### Breaking Changes
+- <If any>
+```
+
+## Unsigned macOS Binary Notes
+
+For unsigned binaries, include Gatekeeper bypass instructions:
+```
+Bypass Gatekeeper (first run):
+- Right-click → Open → Open, or
+- `xattr -d com.apple.quarantine <binary>`
+```
