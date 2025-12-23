@@ -34,6 +34,10 @@ When reviewing code, check for these issues:
 | Resource leaks | Objects not cleaned up | Add proper cleanup/disposal |
 | Repeated initialization | Same setup on every call | Cache or initialize once |
 | Poor error handling | Silent failures, missing logs | Add logging and user feedback |
+| Placeholders | `yourusername`, `TODO`, `FIXME`, `TBD`, `HACK` | Replace with real values or remove |
+| Hardcoded names | Domain names, usernames, paths in logic | Move to config or CLI options |
+| Stale README | New features/options not documented | Update README.md with current usage |
+| Verbose README | Redundant examples, excessive text | Keep concise - one example per concept |
 
 **Prioritize issues by impact**: security > correctness > performance > maintainability.
 
@@ -96,6 +100,20 @@ After creating tests, verify each one:
 
 If you find issues, fix them before presenting the tests.
 
+# Commits
+
+Format: `<type>: <summary>` (one-liner, max 72 chars)
+
+| Type | Use |
+|------|-----|
+| feat | New feature |
+| fix | Bug fix |
+| refactor | Code change (no new feature, no bug fix) |
+| test | Add or fix tests |
+| docs | Documentation only |
+
+---
+
 # Documentation
 
 ## Principles
@@ -117,6 +135,6 @@ If you find issues, fix them before presenting the tests.
 
 - Verbose explanations when a table suffices
 - Repeating the same information in different words
-- Generic placeholder values - use realistic examples
+- Generic placeholder values - use self-documenting names (e.g., `OldProfile` not `Profile 1`)
 - Documentation that describes obvious code behavior
 - Examples that don't make sense in domain context (verify the example workflow is realistic)

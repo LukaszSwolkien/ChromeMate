@@ -61,10 +61,12 @@ def _print_summary(report: AnalysisReport, console: Console) -> None:
     table.add_column("Metric", style="bold")
     table.add_column("Value", justify="right")
 
+    enabled_ext = len([e for e in report.extensions if e.enabled])
+    disabled_ext = len([e for e in report.extensions if not e.enabled])
     table.add_row("Total Bookmarks", str(len(report.bookmarks)))
     table.add_row("History Entries", str(len(report.history)))
-    table.add_row("Extensions (enabled)", str(len([e for e in report.extensions if e.enabled])))
-    table.add_row("Extensions (disabled)", str(len([e for e in report.extensions if not e.enabled])))
+    table.add_row("Extensions (enabled)", str(enabled_ext))
+    table.add_row("Extensions (disabled)", str(disabled_ext))
 
     console.print(table)
     console.print()

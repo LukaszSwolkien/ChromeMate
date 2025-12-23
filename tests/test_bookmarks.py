@@ -55,3 +55,4 @@ def test_bookmarks_get_folders(temp_profile: Path, sample_bookmarks: Path) -> No
     assert any("Work" in f for f in folders)
 
 
+

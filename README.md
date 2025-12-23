@@ -51,6 +51,14 @@ uv run chromemate export --bookmarked-only --days 400 --include-unvisited cisco 
 uv run chromemate export --bookmarked-only --days 400 --include-unvisited cisco --count
 ```
 
+### Merge History
+
+```bash
+# Merge history from old profile into new one (Chrome must be closed)
+uv run chromemate merge-history "OldProfile" "NewProfile" --dry-run
+uv run chromemate merge-history "OldProfile" "NewProfile" -y
+```
+
 ### CLI Options
 
 | Option | Short | Commands | Description |

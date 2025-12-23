@@ -61,3 +61,4 @@ def test_extensions_handles_missing_preferences(temp_profile: Path) -> None:
     assert extensions == []
 
 
+

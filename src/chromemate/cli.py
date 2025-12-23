@@ -16,50 +16,30 @@ from chromemate.exporter import (
     export_history_json,
     export_history_markdown,
 )
+from chromemate.history_merger import HistoryMerger
 from chromemate.profile import ChromeProfile, discover_profiles, get_profile_by_name
 from chromemate.report import AnalysisReport, print_report
 
 # Constants
 HISTORY_QUERY_LIMIT = 10000  # Max entries to fetch for filtering/aggregation
 
-# Domains where subdomains should be ignored when matching URLs
-# (e.g., www.cisco.com and 3p.cisco.com are treated as same domain)
-FLEXIBLE_MATCH_DOMAINS = {"cisco.com", "splunk.com"}
 
-
-def _get_base_domain(url: str) -> str:
-    """Extract base domain from URL (e.g., 'www.cisco.com' -> 'cisco.com')."""
-    try:
-        netloc = urlparse(url).netloc.lower()
-        parts = netloc.split(".")
-        if len(parts) >= 2:
-            return ".".join(parts[-2:])
-        return netloc
-    except Exception:
-        return ""
-
-
-def _get_match_key(url: str, flexible_domains: set[str] | None = None) -> str:
-    """
-    Get a normalized key for URL matching.
-    For flexible domains, uses base_domain + path.
-    For others, uses full URL.
-    """
-    if flexible_domains is None:
-        flexible_domains = FLEXIBLE_MATCH_DOMAINS
-
+def _normalize_url(url: str) -> str:
+    """Normalize URL for matching (lowercase, remove query/fragment)."""
     try:
         parsed = urlparse(url)
-        base_domain = _get_base_domain(url)
-
-        if base_domain in flexible_domains:
-            # For flexible domains, match by base domain + path (ignore subdomain & query)
-            return f"{base_domain}{parsed.path}".lower().rstrip("/")
-        else:
-            # For other domains, use full URL without query params
-            return f"{parsed.netloc}{parsed.path}".lower().rstrip("/")
+        return f"{parsed.netloc}{parsed.path}".lower().rstrip("/")
     except Exception:
         return url.lower()
+
+
+def _find_unused_bookmarks(
+    bookmarks: list,
+    history: list,
+) -> list:
+    """Find bookmarks that have never been visited."""
+    visited_keys = {_normalize_url(e.url) for e in history}
+    return [b for b in bookmarks if _normalize_url(b.url) not in visited_keys]
 
 
 app = typer.Typer(
@@ -95,7 +75,7 @@ def analyze(
     ] = None,
     top: Annotated[
         Optional[int],
-        typer.Option("--top", "-t", help="Number of top sites to show (default: 10, or unlimited if --days is set)"),
+        typer.Option("--top", "-t", help="Limit results (default: 10)"),
     ] = None,
     include: Annotated[
         Optional[list[str]],
@@ -112,10 +92,6 @@ def analyze(
     unused_bookmarks: Annotated[
         bool,
         typer.Option("--unused", "-U", help="Show bookmarks that have never been visited"),
-    ] = False,
-    strict_match: Annotated[
-        bool,
-        typer.Option("--strict-match", help="Require exact URL match (don't ignore subdomains for cisco.com, etc.)"),
     ] = False,
     aggregate: Annotated[
         Optional[str],
@@ -155,19 +131,15 @@ def analyze(
         bookmarked_urls = {b.url for b in bookmarks} if bookmarked_only else None
 
         history_analyzer = HistoryAnalyzer(chrome_profile.path)
-        history_analyzer.analyze(limit=HISTORY_QUERY_LIMIT)  # Get more to allow filtering/aggregation
+        history_analyzer.analyze(limit=HISTORY_QUERY_LIMIT)
 
         # Handle unused bookmarks mode
         if unused_bookmarks:
             # Get all visited URLs
             all_history = history_analyzer.filter(days=days)
 
-            # Build set of visited URL keys for matching
-            flexible_domains = None if strict_match else FLEXIBLE_MATCH_DOMAINS
-            visited_keys = {_get_match_key(e.url, flexible_domains) for e in all_history}
-
             # Find bookmarks that were never visited
-            unused = [b for b in bookmarks if _get_match_key(b.url, flexible_domains) not in visited_keys]
+            unused = _find_unused_bookmarks(bookmarks, all_history)
 
             # Apply include/exclude filters
             if include:
@@ -247,7 +219,7 @@ def export(
     ] = True,
     top: Annotated[
         Optional[int],
-        typer.Option("--top", "-t", help="Number of top sites to export (default: 100, or unlimited if --days is set)"),
+        typer.Option("--top", "-t", help="Limit results (default: 100)"),
     ] = None,
     include: Annotated[
         Optional[list[str]],
@@ -264,10 +236,6 @@ def export(
     unused_bookmarks: Annotated[
         bool,
         typer.Option("--unused", "-U", help="Export bookmarks that have never been visited"),
-    ] = False,
-    strict_match: Annotated[
-        bool,
-        typer.Option("--strict-match", help="Require exact URL match (don't ignore subdomains for cisco.com, etc.)"),
     ] = False,
     aggregate: Annotated[
         Optional[str],
@@ -287,7 +255,7 @@ def export(
     ] = None,
     include_unvisited: Annotated[
         Optional[list[str]],
-        typer.Option("--include-unvisited", help="Also include unvisited bookmarks matching pattern (can repeat)"),
+        typer.Option("--include-unvisited", help="Include unvisited bookmarks matching pattern"),
     ] = None,
     count_only: Annotated[
         bool,
@@ -320,12 +288,8 @@ def export(
         history_analyzer.analyze(limit=HISTORY_QUERY_LIMIT)
         all_history = history_analyzer.filter(days=days)
 
-        # Build set of visited URL keys for matching
-        flexible_domains = None if strict_match else FLEXIBLE_MATCH_DOMAINS
-        visited_keys = {_get_match_key(e.url, flexible_domains) for e in all_history}
-
         # Find bookmarks that were never visited
-        unused = [b for b in bm_list if _get_match_key(b.url, flexible_domains) not in visited_keys]
+        unused = _find_unused_bookmarks(bm_list, all_history)
 
         # Apply include/exclude filters
         if include:
@@ -378,6 +342,7 @@ def export(
     # Handle --count mode: show breakdown by folder without exporting
     if count_only and bookmarks and bm_list:
         from collections import defaultdict
+
         from rich.table import Table
 
         # Determine which bookmarks would be exported
@@ -402,7 +367,7 @@ def export(
 
         # Build tree structure
         console.print()
-        console.print(f"[bold]Bookmark Export Preview[/bold]")
+        console.print("[bold]Bookmark Export Preview[/bold]")
         console.print()
 
         # Show table with folder counts - exported
@@ -451,20 +416,15 @@ def export(
                 export_bookmarks_html(filtered_bookmarks, output / "bookmarks.html")
 
                 # Build descriptive message
-                msg_parts = [f"{len(filtered_bookmarks)} bookmarks"]
-                if include_unvisited:
-                    msg_parts.append(f"(including unvisited matching: {', '.join(include_unvisited)})")
-                console.print(
-                    f"[green]✓[/green] Exported {' '.join(msg_parts)} "
-                    f"(from {len(bm_list)} total) to bookmarks.html"
-                )
+                count = len(filtered_bookmarks)
+                console.print(f"[green]✓[/green] Exported {count} bookmarks to bookmarks.html")
             else:
                 export_bookmarks_html(bm_list, output / "bookmarks.html")
-                console.print(f"[green]✓[/green] Exported {len(bm_list)} bookmarks to bookmarks.html")
+                console.print(f"[green]✓[/green] Exported {len(bm_list)} bookmarks")
 
         if history:
             history_analyzer = HistoryAnalyzer(chrome_profile.path)
-            history_analyzer.analyze(limit=HISTORY_QUERY_LIMIT)  # Get more to allow filtering/aggregation
+            history_analyzer.analyze(limit=HISTORY_QUERY_LIMIT)
             hist_list = history_analyzer.filter(
                 include=include,
                 exclude=exclude,
@@ -483,7 +443,7 @@ def export(
                 label = "bookmarked sites" if bookmarked_only else "top sites"
                 if aggregate:
                     label = f"aggregated ({aggregate}) {label}"
-                console.print(f"[green]✓[/green] Exported {len(hist_list)} {label} to top_sites.csv/json/md")
+                console.print(f"[green]✓[/green] Exported {len(hist_list)} {label}")
 
         if extensions:
             extensions_analyzer = ExtensionsAnalyzer(chrome_profile.path)
@@ -492,9 +452,9 @@ def export(
             if enabled:
                 export_extensions_json(enabled, output / "extensions.json")
                 export_extensions_markdown(enabled, output / "extensions.md")
-                console.print(f"[green]✓[/green] Exported {len(enabled)} extensions to extensions.json/md")
+                console.print(f"[green]✓[/green] Exported {len(enabled)} extensions")
 
-    console.print(f"\n[bold green]Export complete![/bold green] Files saved to: {output.absolute()}")
+    console.print(f"\n[bold green]Export complete![/bold green] Output: {output}")
 
 
 def _get_profile(name: str | None) -> ChromeProfile:
@@ -509,6 +469,134 @@ def _get_profile(name: str | None) -> ChromeProfile:
         raise typer.Exit(1)
 
     return profile
+
+
+@app.command("merge-history")
+def merge_history(
+    source: Annotated[
+        str,
+        typer.Argument(help="Source profile name (to copy history FROM)"),
+    ],
+    target: Annotated[
+        str,
+        typer.Argument(help="Target profile name (to merge history INTO)"),
+    ],
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", "-n", help="Preview changes without modifying anything"),
+    ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip confirmation prompt"),
+    ] = False,
+) -> None:
+    """
+    Merge browsing history from one profile into another.
+
+    This combines history from both profiles so Chrome will suggest
+    previously visited sites from the old profile in the new one.
+
+    IMPORTANT: Chrome must be completely closed before running this command.
+
+    Examples:
+
+        chromemate merge-history "Profile 1" Default --dry-run
+
+        chromemate merge-history "Old Work" "New Work" -y
+    """
+    source_profile = _get_profile(source)
+    target_profile = _get_profile(target)
+
+    if source_profile.path == target_profile.path:
+        console.print("[red]Error: Source and target profiles must be different.[/red]")
+        raise typer.Exit(1)
+
+    merger = HistoryMerger(
+        source_profile=source_profile.path,
+        target_profile=target_profile.path,
+        dry_run=dry_run,
+    )
+
+    # Show preview
+    console.print()
+    console.print("[bold]History Merge Preview[/bold]")
+    console.print()
+    console.print(f"  Source: [cyan]{source_profile.display_name}[/cyan] ({source_profile.name})")
+    console.print(f"  Target: [cyan]{target_profile.display_name}[/cyan] ({target_profile.name})")
+    console.print()
+
+    try:
+        with console.status("[bold blue]Analyzing profiles..."):
+            preview = merger.preview()
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    from rich.table import Table
+
+    table = Table(title="Profile Statistics", border_style="blue")
+    table.add_column("Profile", style="cyan")
+    table.add_column("URLs", justify="right")
+    table.add_column("Visits", justify="right")
+
+    table.add_row(
+        f"Source ({source_profile.name})",
+        str(preview["source_urls"]),
+        str(preview["source_visits"]),
+    )
+    table.add_row(
+        f"Target ({target_profile.name})",
+        str(preview["target_urls"]),
+        str(preview["target_visits"]),
+    )
+
+    console.print(table)
+    console.print()
+
+    console.print("[bold]Merge Plan:[/bold]")
+    new_urls = preview['new_urls_to_add']
+    update_urls = preview['existing_urls_to_update']
+    console.print(f"  [green]+[/green] New URLs: [green]{new_urls}[/green]")
+    console.print(f"  [yellow]~[/yellow] URLs to update: [yellow]{update_urls}[/yellow]")
+    console.print()
+
+    if dry_run:
+        console.print("[dim]Dry run mode - no changes will be made.[/dim]")
+        return
+
+    if preview["new_urls_to_add"] == 0 and preview["existing_urls_to_update"] == 0:
+        console.print("[yellow]Nothing to merge - target has all source history.[/yellow]")
+        return
+
+    # Confirm
+    if not yes:
+        console.print("[bold yellow]WARNING:[/bold yellow] Make sure Chrome is completely closed!")
+        console.print()
+        confirm = typer.confirm("Proceed with merge?")
+        if not confirm:
+            console.print("[dim]Merge cancelled.[/dim]")
+            raise typer.Exit(0)
+
+    # Perform merge
+    try:
+        with console.status("[bold blue]Merging history..."):
+            stats = merger.merge()
+    except PermissionError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        console.print("\n[yellow]Tip: Close Chrome completely and try again.[/yellow]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error during merge: {e}[/red]")
+        raise typer.Exit(1)
+
+    console.print()
+    console.print("[bold green]Merge complete![/bold green]")
+    console.print()
+    console.print(f"  [green]+[/green] URLs added: [green]{stats.urls_added}[/green]")
+    console.print(f"  [yellow]~[/yellow] URLs updated: [yellow]{stats.urls_updated}[/yellow]")
+    console.print(f"  [blue]>[/blue] Visits added: [blue]{stats.visits_added}[/blue]")
+    console.print()
+    console.print("[dim]Start Chrome to see the merged history in action.[/dim]")
 
 
 if __name__ == "__main__":

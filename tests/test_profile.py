@@ -51,3 +51,4 @@ def test_chrome_profile_with_display_name() -> None:
     assert profile.display_name == "Work"
 
 
+
